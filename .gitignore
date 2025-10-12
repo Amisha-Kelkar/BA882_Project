@@ -1,0 +1,16 @@
+__pycache__/
+*.pyc
+.venv/
+.env
+.env.*
+.DS_Store
+*.swp
+*.duckdb
+*.zip
+*.log
+*.ndjson
+*.parquet
+*.csv
+README-cloudshell.txt
+duckdb.zip
+target_warehouse.duckdb
