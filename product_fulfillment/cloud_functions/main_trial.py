@@ -1,18 +1,13 @@
 import os
 import json
-import time
-import io
 import pandas as pd
 import duckdb
 import http.client
 from datetime import datetime, date, timedelta
-from google.cloud import secretmanager
+from google.cloud import secretmanager, storage
 from pandas import json_normalize
 
-
-# ---------------------------------------------------------------------
-# Helper: Retrieve secret from Google Secret Manager
-# ---------------------------------------------------------------------
+# Get secret value
 def get_secret(secret_id: str) -> str:
     project_id = os.environ.get("GOOGLE_CLOUD_PROJECT")
     client = secretmanager.SecretManagerServiceClient()
@@ -20,43 +15,35 @@ def get_secret(secret_id: str) -> str:
     response = client.access_secret_version(request={"name": name})
     return response.payload.data.decode("utf-8")
 
+# Helper: Read store/tcin list from GCS
+def get_store_tcin_list(bucket_name, file_name):
+    client = storage.Client()
+    bucket = client.bucket(bucket_name)
+    blob = bucket.blob(file_name)
+    csv_bytes = blob.download_as_bytes()
+    df = pd.read_csv(pd.io.common.BytesIO(csv_bytes))
+    return df.to_dict("records")
 
-# ---------------------------------------------------------------------
 # Main Cloud Function
-# ---------------------------------------------------------------------
+
 def load_api_to_motherduck(request):
     """Weekly incremental loader for Target API → MotherDuck (one-row-per-service flattening)."""
 
-    # --- Load Secrets ---
+    # --- Load secrets ---
     md_token = get_secret("project_motherduck_token")
     api_key = get_secret("target_api_test_amisha")
 
-    # -----------------------------------------------------------------
-    # Connect to MotherDuck and fetch store/product pairs
-    # -----------------------------------------------------------------
+    # --- Load store/tcin list from Cloud Storage ---
+    bucket_name = "store_product_ids"
+    file_name = "Store_Product Ids.csv"
+    pairs = get_store_tcin_list(bucket_name, file_name)
+
+    # --- Connect to MotherDuck (create DB if missing) ---
     with duckdb.connect(f"md:?motherduck_token={md_token}") as conn:
         conn.sql("CREATE DATABASE IF NOT EXISTS project_882")
         conn.sql("USE project_882")
 
-        # --- Pull unique (store_id, product_id) pairs from product_search ---
-        try:
-            pairs_df = conn.execute("""
-                SELECT DISTINCT
-                    CAST(store_id AS INTEGER) AS store_id,
-                    CAST(product_id AS STRING) AS tcin
-                FROM project_882.main.target_products_search
-                WHERE store_id IS NOT NULL
-                  AND product_id IS NOT NULL
-            """).fetchdf()
-            pairs = pairs_df.to_dict("records")
-            print(f"✅ Fetched {len(pairs)} unique store/product_id pairs from product_search.")
-        except Exception as e:
-            print(f"❌ Error fetching pairs from product_search: {e}")
-            return ("Failed to fetch store/product pairs.", 500)
-
-        # -----------------------------------------------------------------
-        # Check existing load_dates to avoid duplicates
-        # -----------------------------------------------------------------
+        # --- Check already-loaded dates ---
         try:
             existing_dates = set(
                 r[0] for r in conn.execute("SELECT DISTINCT load_date FROM raw_target_api").fetchall()
@@ -66,14 +53,13 @@ def load_api_to_motherduck(request):
 
         print(f"Already loaded load_dates: {existing_dates}")
 
-        # -----------------------------------------------------------------
-        # Define date window and days to load
-        # -----------------------------------------------------------------
+        # --- Define date window ---
         end_date = date.today()
-        start_date = end_date - timedelta(days=6)  # 7-day window
+        start_date = end_date - timedelta(days=7)
         load_ts = datetime.utcnow().isoformat()
         load_dt = str(end_date)
 
+        # --- Identify which days to load ---
         days_to_load = [
             d.strftime("%Y-%m-%d")
             for d in pd.date_range(start=start_date, end=end_date)
@@ -84,33 +70,33 @@ def load_api_to_motherduck(request):
             print("No new load_date to load. Exiting cleanly.")
             return ("No new data to load.", 200)
 
-        print(f"📅 Loading days: {days_to_load}")
+        print(f"Loading days: {days_to_load}")
 
-        # -----------------------------------------------------------------
+        # -------------------------------
         # Fetch API data
-        # -----------------------------------------------------------------
+        # -------------------------------
         all_json = []
         for pair in pairs:
             store_id = int(pair["store_id"])
-            tcin = str(pair["tcin"])  # note: product_id aliased as tcin
+            tcin = str(pair["tcin"])
             for record_date in days_to_load:
                 try:
                     conn_api = http.client.HTTPSConnection("target-com-shopping-api.p.rapidapi.com")
                     headers = {
-                            "x-rapidapi-key": api_key,
-                            "x-rapidapi-host": "target-com-shopping-api.p.rapidapi.com",
-                            "accept": "application/json",
-                            "cache-control": "no-cache",
-                            "authority": "redsky.target.com",
-                        }
+                        "x-rapidapi-key": api_key,
+                        "x-rapidapi-host": "target-com-shopping-api.p.rapidapi.com",
+                        "accept": "application/json",
+                        "cache-control": "no-cache",
+                        "authority": "redsky.target.com",
+                    }
                     endpoint = (
-                            f"/product_fulfillment?"
-                            f"store_id={store_id}&state=MA&"
-                            f"tcin={tcin}"
-                        )
+                        f"/product_fulfillment?"
+                        f"longitude=-122.200&store_id={store_id}&state=MA&tcin={tcin}&zip=02134&latitude=37.820"
+                    )
                     conn_api.request("GET", endpoint, headers=headers)
                     res = conn_api.getresponse()
                     data = res.read().decode("utf-8")
+                    conn_api.close()
 
                     j = json.loads(data)
                     j["store_id"] = store_id
@@ -120,17 +106,17 @@ def load_api_to_motherduck(request):
                     j["load_timestamp"] = load_ts
                     all_json.append(j)
 
-                    print(f"Fetched store={store_id}, tcin={tcin}, date={record_date}")
-                    time.sleep(0.3)  # gentle delay to avoid 429 rate limits
+                    print(f"store={store_id}, tcin={tcin}, date={record_date}")
+
                 except Exception as e:
                     print(f"Error fetching store={store_id}, tcin={tcin}, date={record_date}: {e}")
 
         if not all_json:
             return ("No data fetched from API.", 200)
 
-        # -----------------------------------------------------------------
-        # Flatten `services` list and normalize
-        # -----------------------------------------------------------------
+        # -------------------------------
+        # Flatten 'services' list
+        # -------------------------------
         expanded_json = []
         for record in all_json:
             services_list = (
@@ -141,7 +127,7 @@ def load_api_to_motherduck(request):
                 .get("services", [])
             )
 
-            if isinstance(services_list, list) and services_list:
+            if isinstance(services_list, list) and len(services_list) > 0:
                 for s in services_list:
                     if not s:
                         continue
@@ -151,12 +137,12 @@ def load_api_to_motherduck(request):
             else:
                 expanded_json.append(record)
 
+        # -------------------------------
+        # Normalize + clean
+        # -------------------------------
         df = json_normalize(expanded_json, sep="_")
         df.columns = [c.lower().replace(".", "_") for c in df.columns]
 
-        # -----------------------------------------------------------------
-        # Clean and reorder columns
-        # -----------------------------------------------------------------
         meta_cols = ["store_id", "tcin", "record_date", "load_date", "load_timestamp"]
         for m in meta_cols:
             if m not in df.columns:
@@ -181,33 +167,32 @@ def load_api_to_motherduck(request):
         df = df[front_cols + other_cols]
 
         df = df.drop_duplicates(
-            subset=["store_id", "tcin", "load_date", "services_shipping_method_id"],
-            keep="last",
+            subset=["store_id", "tcin", "load_date", "services_shipping_method_id"], keep="last"
         )
 
-        # -----------------------------------------------------------------
+        # -------------------------------
         # Write to MotherDuck
-        # -----------------------------------------------------------------
+        # -------------------------------
         conn.register("df_view", df)
 
+        # If table doesn’t exist, create it from df_view
         table_exists = (
-            conn.execute("""
-                SELECT COUNT(*) FROM information_schema.tables
-                WHERE table_name='raw_target_api'
-            """).fetchone()[0]
+            conn.execute(
+                "SELECT COUNT(*) FROM information_schema.tables WHERE table_name='raw_target_api'"
+            ).fetchone()[0]
             > 0
         )
 
         if not table_exists:
             conn.execute("CREATE TABLE raw_target_api AS SELECT * FROM df_view")
-            print("🆕 Created new table raw_target_api.")
+            print("Created new table raw_target_api.")
         else:
             conn.execute("INSERT INTO raw_target_api SELECT * FROM df_view")
-            print("✅ Appended new rows to raw_target_api.")
+            print("Appended new rows to raw_target_api.")
 
-        # -----------------------------------------------------------------
-        # Create structured table (target_products_fulfillment)
-        # -----------------------------------------------------------------
+        # -------------------------------
+        # Create structured table
+        # -------------------------------
         conn.execute("""
             CREATE TABLE IF NOT EXISTS target_products_fulfillment AS
             SELECT
@@ -240,6 +225,5 @@ def load_api_to_motherduck(request):
             FROM raw_target_api
         """)
 
-    msg = f"Loaded {len(df)} rows for {len(days_to_load)} new load_dates."
-    print(msg)
-    return (msg, 200)
+    return (f"Loaded {len(df)} rows for {len(days_to_load)} new load_dates.", 200)
+
