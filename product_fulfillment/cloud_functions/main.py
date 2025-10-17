@@ -1,7 +1,6 @@
 import os
 import json
 import time
-import io
 import pandas as pd
 import duckdb
 import http.client
@@ -38,7 +37,7 @@ def load_api_to_motherduck(request):
         conn.sql("CREATE DATABASE IF NOT EXISTS project_882")
         conn.sql("USE project_882")
 
-        # --- Pull unique (store_id, product_id) pairs from product_search ---
+        # --- Pull unique (store_id, product_id) pairs ---
         try:
             pairs_df = conn.execute("""
                 SELECT DISTINCT
@@ -49,9 +48,9 @@ def load_api_to_motherduck(request):
                   AND product_id IS NOT NULL
             """).fetchdf()
             pairs = pairs_df.to_dict("records")
-            print(f"✅ Fetched {len(pairs)} unique store/product_id pairs from product_search.")
+            print(f"Fetched {len(pairs)} unique store/product_id pairs from product_search.")
         except Exception as e:
-            print(f"❌ Error fetching pairs from product_search: {e}")
+            print(f"Error fetching pairs from product_search: {e}")
             return ("Failed to fetch store/product pairs.", 500)
 
         # -----------------------------------------------------------------
@@ -70,7 +69,7 @@ def load_api_to_motherduck(request):
         # Define date window and days to load
         # -----------------------------------------------------------------
         end_date = date.today()
-        start_date = end_date - timedelta(days=6)  # 7-day window
+        start_date = end_date - timedelta(days=6)
         load_ts = datetime.utcnow().isoformat()
         load_dt = str(end_date)
 
@@ -84,7 +83,7 @@ def load_api_to_motherduck(request):
             print("No new load_date to load. Exiting cleanly.")
             return ("No new data to load.", 200)
 
-        print(f"📅 Loading days: {days_to_load}")
+        print(f"Loading days: {days_to_load}")
 
         # -----------------------------------------------------------------
         # Fetch API data
@@ -92,22 +91,18 @@ def load_api_to_motherduck(request):
         all_json = []
         for pair in pairs:
             store_id = int(pair["store_id"])
-            tcin = str(pair["tcin"])  # note: product_id aliased as tcin
+            tcin = str(pair["tcin"])
             for record_date in days_to_load:
                 try:
                     conn_api = http.client.HTTPSConnection("target-com-shopping-api.p.rapidapi.com")
                     headers = {
-                            "x-rapidapi-key": api_key,
-                            "x-rapidapi-host": "target-com-shopping-api.p.rapidapi.com",
-                            "accept": "application/json",
-                            "cache-control": "no-cache",
-                            "authority": "redsky.target.com",
-                        }
-                    endpoint = (
-                            f"/product_fulfillment?"
-                            f"store_id={store_id}&state=MA&"
-                            f"tcin={tcin}"
-                        )
+                        "x-rapidapi-key": api_key,
+                        "x-rapidapi-host": "target-com-shopping-api.p.rapidapi.com",
+                        "accept": "application/json",
+                        "cache-control": "no-cache",
+                        "authority": "redsky.target.com",
+                    }
+                    endpoint = f"/product_fulfillment?store_id={store_id}&state=MA&tcin={tcin}"
                     conn_api.request("GET", endpoint, headers=headers)
                     res = conn_api.getresponse()
                     data = res.read().decode("utf-8")
@@ -121,7 +116,7 @@ def load_api_to_motherduck(request):
                     all_json.append(j)
 
                     print(f"Fetched store={store_id}, tcin={tcin}, date={record_date}")
-                    time.sleep(0.3)  # gentle delay to avoid 429 rate limits
+                    time.sleep(0.3)
                 except Exception as e:
                     print(f"Error fetching store={store_id}, tcin={tcin}, date={record_date}: {e}")
 
@@ -143,11 +138,10 @@ def load_api_to_motherduck(request):
 
             if isinstance(services_list, list) and services_list:
                 for s in services_list:
-                    if not s:
-                        continue
-                    new_row = record.copy()
-                    new_row.update({f"services_{k}": v for k, v in s.items()})
-                    expanded_json.append(new_row)
+                    if s:
+                        new_row = record.copy()
+                        new_row.update({f"services_{k}": v for k, v in s.items()})
+                        expanded_json.append(new_row)
             else:
                 expanded_json.append(record)
 
@@ -155,7 +149,7 @@ def load_api_to_motherduck(request):
         df.columns = [c.lower().replace(".", "_") for c in df.columns]
 
         # -----------------------------------------------------------------
-        # Clean and reorder columns
+        # Ensure key columns exist
         # -----------------------------------------------------------------
         meta_cols = ["store_id", "tcin", "record_date", "load_date", "load_timestamp"]
         for m in meta_cols:
@@ -177,23 +171,19 @@ def load_api_to_motherduck(request):
                 df[s] = None
 
         front_cols = meta_cols + service_cols
-        other_cols = [c for c in df.columns if c not in front_cols]
-        df = df[front_cols + other_cols]
-
+        df = df[front_cols + [c for c in df.columns if c not in front_cols]]
         df = df.drop_duplicates(
-            subset=["store_id", "tcin", "load_date", "services_shipping_method_id"],
-            keep="last",
+            subset=["store_id", "tcin", "load_date", "services_shipping_method_id"], keep="last"
         )
 
         # -----------------------------------------------------------------
-        # Write to MotherDuck
+        # Write to raw_target_api (schema-safe append)
         # -----------------------------------------------------------------
         conn.register("df_view", df)
-
         table_exists = (
             conn.execute("""
                 SELECT COUNT(*) FROM information_schema.tables
-                WHERE table_name='raw_target_api'
+                WHERE table_name = 'raw_target_api'
             """).fetchone()[0]
             > 0
         )
@@ -202,17 +192,37 @@ def load_api_to_motherduck(request):
             conn.execute("CREATE TABLE raw_target_api AS SELECT * FROM df_view")
             print("🆕 Created new table raw_target_api.")
         else:
-            conn.execute("INSERT INTO raw_target_api SELECT * FROM df_view")
-            print("✅ Appended new rows to raw_target_api.")
+            existing_cols = [r[1] for r in conn.execute("PRAGMA table_info('raw_target_api')").fetchall()]
+            df_cols = df.columns.tolist()
+
+            for col in existing_cols:
+                if col not in df_cols:
+                    df[col] = None
+                    print(f"Added missing column '{col}' to dataframe as NULL.")
+
+            df = df[existing_cols]
+            conn.register("df_view", df)
+            col_str = ", ".join(existing_cols)
+            conn.execute(f"INSERT INTO raw_target_api ({col_str}) SELECT {col_str} FROM df_view")
+            print(f"Appended {len(df)} rows to raw_target_api.")
 
         # -----------------------------------------------------------------
-        # Create structured table (target_products_fulfillment)
+        # Create or append to structured table (target_products_fulfillment)
         # -----------------------------------------------------------------
-        conn.execute("""
-            CREATE TABLE IF NOT EXISTS target_products_fulfillment AS
+        tpf_exists = (
+            conn.execute("""
+                SELECT COUNT(*) 
+                FROM information_schema.tables 
+                WHERE table_name = 'target_products_fulfillment'
+            """).fetchone()[0]
+            > 0
+        )
+
+        tpf_select_query = """
             SELECT
                 store_id::INT AS store_id,
                 tcin::STRING AS tcin_product_id,
+                record_date::STRING AS record_date,
                 load_date::STRING AS load_date,
                 load_timestamp::TIMESTAMP AS load_ts,
                 services_shipping_method_id::STRING AS shipping_method_id,
@@ -227,19 +237,47 @@ def load_api_to_motherduck(request):
                 data_product___typename::STRING AS product_typename,
                 data_product_fulfillment_scheduled_delivery_availability_status::STRING AS scheduled_delivery_status,
                 data_product_fulfillment_scheduled_delivery_location_available_to_promise_quantity::FLOAT AS scheduled_delivery_promise_qty,
+                data_product_fulfillment_scheduled_delivery_location_id::INT AS scheduled_delivery_location_id,
                 data_product_fulfillment_is_out_of_stock_in_all_store_locations::BOOLEAN AS is_out_of_stock_in_all_stores,
+                data_product_fulfillment_product_id::INT AS product_id,
                 data_product_fulfillment_sold_out::BOOLEAN AS is_sold_out,
                 data_product_fulfillment_shipping_options_availability_status::STRING AS shipping_availability_status,
                 data_product_fulfillment_shipping_options_available_to_promise_quantity::FLOAT AS available_to_promise_qty,
                 data_product_fulfillment_shipping_options_loyalty_availability_status::STRING AS loyalty_availability_status,
                 data_product_fulfillment_product_id::STRING AS fulfillment_product_id,
                 data_product_fulfillment_scheduled_delivery_location_id::INT AS delivery_location,
+                data_product_notify_me_eligible::BOOLEAN AS notify_me_eligible,
                 data_product_notify_me_enabled::BOOLEAN AS notify_me_enabled,
                 data_product_pay_per_order_charges_scheduled_delivery::FLOAT AS charge_scheduled_delivery,
-                data_product_pay_per_order_charges_one_day::FLOAT AS charge_one_day
+                data_product_pay_per_order_charges_one_day::FLOAT AS charge_one_day,
+                data_product_store_positions::STRING AS store_positions
             FROM raw_target_api
-        """)
+        """
 
-    msg = f"Loaded {len(df)} rows for {len(days_to_load)} new load_dates."
-    print(msg)
-    return (msg, 200)
+        if not tpf_exists:
+            conn.execute(f"CREATE TABLE target_products_fulfillment AS {tpf_select_query}")
+            print("Created target_products_fulfillment.")
+        else:
+            conn.execute(f"""
+                INSERT INTO target_products_fulfillment
+                {tpf_select_query}
+                WHERE load_date NOT IN (
+                    SELECT DISTINCT load_date FROM target_products_fulfillment
+                )
+            """)
+            print("Appended new load_date rows to target_products_fulfillment.")
+
+        try:
+            conn.execute("""
+        DELETE FROM raw_target_api
+        WHERE load_date < (CURRENT_DATE - INTERVAL 7 DAY)
+    """)
+            print("Cleaned up raw_target_api: deleted rows older than 7 days.")
+        except Exception as e:
+            print(f"Cleanup step failed: {e}")
+        # -----------------------------------------------------------------
+        # Completion message
+        # -----------------------------------------------------------------
+        msg = f"Loaded {len(df)} rows for {len(days_to_load)} new load_dates."
+        print(msg)
+        return (msg, 200)
