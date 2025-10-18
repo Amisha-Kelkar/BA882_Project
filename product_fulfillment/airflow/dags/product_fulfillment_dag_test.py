@@ -1,5 +1,5 @@
 from airflow import DAG
-from airflow.providers.http.operators.http import SimpleHttpOperator
+from airflow.providers.http.operators.http import HttpOperator
 from datetime import datetime, timedelta
 import os
 
@@ -25,7 +25,7 @@ dag = DAG(
 )
 
 # Define task inside the DAG context
-trigger_function = SimpleHttpOperator(
+trigger_function = HttpOperator(
     task_id="trigger_cloud_function",
     method="GET",
     endpoint="https://us-central1-ba882-team4.cloudfunctions.net/load_api_to_motherduck",
