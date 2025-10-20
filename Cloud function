@@ -1,0 +1,18 @@
+PROJECT_ID=ba882-team4
+REGION=us-central1
+SERVICE=nearby-stores
+IMAGE="us-central1-docker.pkg.dev/${PROJECT_ID}/store-loader/${SERVICE}:rev-$(date +%Y%m%d-%H%M%S)"
+
+gcloud builds submit --tag "$IMAGE"
+）
+gcloud run deploy "$SERVICE" \
+  --image "$IMAGE" \
+  --region "$REGION" \
+  --platform managed \
+  --allow-unauthenticated \
+  --set-secrets MOTHERDUCK_TOKEN=project_motherduck_token:latest \
+  --update-env-vars MD_CATALOG=project_882
+
+curl -s -X POST "https://nearby-stores-756516792287.us-central1.run.app/ingest" \
+  -H "Content-Type: application/json" \
+  -d '{"place":"02215","within":50,"limit":20}' | jq .
