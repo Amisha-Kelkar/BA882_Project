@@ -1,18 +1,3 @@
-# duckdb
-# pandas
-# google-cloud-secret-manager
-# google-cloud-storage
-# functions-framework==3.*
-# google-cloud-secret-manager==2.20.2
-# google-cloud-storage==2.18.2
-# requests>=2.31.0
-# pandas>=2.1.1
-# duckdb>=0.10.2
-# cachetools>=6.0.0
-# google-cloud-secret-manager
-# google-cloud-storage
-# requests
-# motherduck
 functions-framework==3.*
 google-cloud-storage
 google-cloud-secret-manager

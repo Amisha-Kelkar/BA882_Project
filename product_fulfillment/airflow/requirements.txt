@@ -1,36 +1,9 @@
-# Astro Runtime includes the following pre-installed providers packages: https://www.astronomer.io/docs/astro/runtime-image-architecture#provider-packages
-# # Core Airflow HTTP provider (needed for HttpOperator)
-# apache-airflow-providers-http
-
-# # Google Cloud provider (useful if you later call Secret Manager or GCS from Airflow)
-# apache-airflow-providers-google
-
-# # Pandas + DuckDB (only needed if you’ll add data processing inside DAGs)
-# pandas
-# duckdb
-
-# # Requests (used implicitly by HTTP operator and useful for custom Python tasks)
-# requests
-
-# # Optional: log formatting and debugging tools
-# python-dotenv
 # Core Astronomer runtime (Airflow provided by image)
 astronomer-cosmos>=1.3.0
 
 # --- Airflow Providers ---
-# Required for SimpleHttpOperator
 apache-airflow-providers-http
-
-# Google Cloud Functions, Secret Manager, BigQuery, etc.
 apache-airflow-providers-google
-
-# Optional but often useful for data pipelines
-apache-airflow-providers-snowflake
-apache-airflow-providers-postgres
-apache-airflow-providers-slack
-apache-airflow-providers-docker
-
-# --- Data and API Utilities ---
 pandas
 requests
 google-cloud-storage
@@ -39,7 +12,5 @@ google-cloud-bigquery
 duckdb
 motherduck
 pyarrow
-
-# --- Optional (useful for logs, debugging, testing) ---
 python-dotenv
 pytest
