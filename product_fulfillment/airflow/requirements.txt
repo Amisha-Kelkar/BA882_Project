@@ -1,0 +1,16 @@
+# Core Astronomer runtime (Airflow provided by image)
+astronomer-cosmos>=1.3.0
+
+# --- Airflow Providers ---
+apache-airflow-providers-http
+apache-airflow-providers-google
+pandas
+requests
+google-cloud-storage
+google-cloud-secret-manager
+google-cloud-bigquery
+duckdb
+motherduck
+pyarrow
+python-dotenv
+pytest
