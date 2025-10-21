@@ -4,6 +4,13 @@ SA_EMAIL=$(gcloud functions describe load_api_to_motherduck --region=us-central1
 for secret in project_motherduck_token target_api_test_amisha; do   gcloud secrets add-iam-policy-binding $secret     --member="serviceAccount:${SA_EMAIL}"     --role="roles/secretmanager.secretAccessor"; done
 
 -- Deployment
+gcloud functions deploy product-search-api-to-duckdb   \
+        --gen2   --runtime=python311   \
+        --region=us-central1   --source=.  \
+        --entry-point=product-search-api-to-duckdb   --trigger-http   \
+        --allow-unauthenticated   --set-env-vars=GOOGLE_CLOUD_PROJECT=ba882-team4   \
+        --timeout=240s --memory=512MB
+
 gcloud functions deploy load_api_to_motherduck   \
         --gen2   --runtime=python311   \
         --region=us-central1   --source=.  \
