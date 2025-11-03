@@ -1,0 +1,49 @@
+# docker-compose.yaml  （Postgres + LocalExecutor，轻量依赖，无 torch/ctgan）
+services:
+  postgres:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: airflow
+      POSTGRES_PASSWORD: airflow
+      POSTGRES_DB: airflow
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U airflow"]
+      interval: 5s
+      retries: 20
+
+  airflow:
+    image: apache/airflow:2.10.3-python3.11
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__CORE__LOAD_EXAMPLES: "False"
+      AIRFLOW__WEBSERVER__EXPOSE_CONFIG: "True"
+      AIRFLOW__WEBSERVER__ENABLE_PROXY_FIX: "True"
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres:5432/airflow
+      AIRFLOW__CELERY__RESULT_BACKEND: db+postgresql://airflow:airflow@postgres:5432/airflow
+      TZ: America/New_York
+
+      # MotherDuck
+      MOTHERDUCK_TOKEN: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6InloNDU4N2FAc3R1ZGVudC5hbWVyaWNhbi5lZHUiLCJzZXNzaW9uIjoieWg0NTg3YS5zdHVkZW50LmFtZXJpY2FuLmVkdSIsInBhdCI6IlJlWFBESjdudHFib0pNbXNVbnZpVnF6UXJiUFoxUWZRd0gxU1ZhV0JtTWMiLCJ1c2VySWQiOiIwZDViYjlkNy03NjlmLTRlYTAtYWY4Yi04NjAxMTkyYmM3MzQiLCJpc3MiOiJtZF9wYXQiLCJyZWFkT25seSI6ZmFsc2UsInRva2VuVHlwZSI6InJlYWRfd3JpdGUiLCJpYXQiOjE3NjAyODk3MTV9.Wxr6JDpdSo4t2Bqbgl7rLN1Myw5BmzpuWk0FB-kHcw8
+      MD_CATALOG: project_882
+      MD_SOURCE_TABLE: main.walmart_sales_like
+      MD_TARGET_TABLE: main.walmart_sdv
+      NUM_ROWS: "20000"
+      SEED_LIMIT: "0"
+      SDV_PRESET: FAST_ML
+
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - ./start.sh:/start.sh:ro
+
+    command: ["bash", "/start.sh"]
+volumes:
+  pgdata:
