@@ -1,0 +1,102 @@
+{
+    "METADATA_SPEC_VERSION": "SINGLE_TABLE_V1",
+    "columns": {
+        "store_id": {
+            "sdtype": "categorical"
+        },
+        "tcin_product_id": {
+            "sdtype": "categorical"
+        },
+        "record_date": {
+            "sdtype": "datetime"
+        },
+        "load_date": {
+            "sdtype": "datetime"
+        },
+        "load_ts": {
+            "datetime_format": "%Y-%m-%d %H:%M:%S.%f",
+            "sdtype": "datetime"
+        },
+        "shipping_method_id": {
+            "sdtype": "id"
+        },
+        "shipping_method_short_description": {
+            "sdtype": "categorical"
+        },
+        "service_level_description": {
+            "sdtype": "categorical"
+        },
+        "min_delivery_date": {
+            "sdtype": "datetime"
+        },
+        "max_delivery_date": {
+            "sdtype": "datetime"
+        },
+        "cutoff_time": {
+            "sdtype": "datetime"
+        },
+        "is_base_shipping_method": {
+            "sdtype": "categorical"
+        },
+        "is_two_day_shipping": {
+            "sdtype": "categorical"
+        },
+        "product_tcin": {
+            "sdtype": "categorical"
+        },
+        "product_typename": {
+            "sdtype": "categorical"
+        },
+        "scheduled_delivery_status": {
+            "sdtype": "categorical"
+        },
+        "scheduled_delivery_promise_qty": {
+            "sdtype": "categorical"
+        },
+        "scheduled_delivery_location_id": {
+            "sdtype": "categorical"
+        },
+        "is_out_of_stock_in_all_stores": {
+            "sdtype": "categorical"
+        },
+        "product_id": {
+            "sdtype": "categorical"
+        },
+        "is_sold_out": {
+            "sdtype": "categorical"
+        },
+        "shipping_availability_status": {
+            "sdtype": "categorical"
+        },
+        "available_to_promise_qty": {
+            "sdtype": "numerical"
+        },
+        "loyalty_availability_status": {
+            "sdtype": "categorical"
+        },
+        "fulfillment_product_id": {
+            "sdtype": "categorical"
+        },
+        "delivery_location": {
+            "sdtype": "categorical"
+        },
+        "notify_me_eligible": {
+            "sdtype": "categorical"
+        },
+        "notify_me_enabled": {
+            "sdtype": "categorical"
+        },
+        "charge_scheduled_delivery": {
+            "sdtype": "numerical"
+        },
+        "charge_one_day": {
+            "sdtype": "numerical"
+        },
+        "store_positions": {
+            "sdtype": "categorical"
+        },
+        "load_timestamp": {
+            "sdtype": "datetime"
+        }
+    }
+}
