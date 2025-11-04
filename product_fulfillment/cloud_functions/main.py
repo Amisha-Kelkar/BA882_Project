@@ -46,6 +46,7 @@ def load_api_to_motherduck(request):
                 FROM project_882.main.target_products_search
                 WHERE store_id IS NOT NULL
                   AND product_id IS NOT NULL
+                  AND load_date=(SELECT MAX(load_date) FROM project_882.main.target_products_search) 
             """).fetchdf()
             pairs = pairs_df.to_dict("records")
             print(f"Fetched {len(pairs)} unique store/product_id pairs from product_search.")
@@ -69,6 +70,7 @@ def load_api_to_motherduck(request):
         # Define date window and days to load
         # -----------------------------------------------------------------
         end_date = date.today()
+        # start_date = end_date - timedelta(days=3)
         start_date = end_date - timedelta(days=6)
         load_ts = datetime.utcnow().isoformat()
         load_dt = str(end_date)
@@ -245,7 +247,6 @@ def load_api_to_motherduck(request):
                 data_product_fulfillment_shipping_options_available_to_promise_quantity::FLOAT AS available_to_promise_qty,
                 data_product_fulfillment_shipping_options_loyalty_availability_status::STRING AS loyalty_availability_status,
                 data_product_fulfillment_product_id::STRING AS fulfillment_product_id,
-                data_product_fulfillment_scheduled_delivery_location_id::INT AS delivery_location,
                 data_product_notify_me_eligible::BOOLEAN AS notify_me_eligible,
                 data_product_notify_me_enabled::BOOLEAN AS notify_me_enabled,
                 data_product_pay_per_order_charges_scheduled_delivery::FLOAT AS charge_scheduled_delivery,
@@ -270,7 +271,7 @@ def load_api_to_motherduck(request):
         try:
             conn.execute("""
         DELETE FROM raw_target_api
-        WHERE load_date < (CURRENT_DATE - INTERVAL 7 DAY)
+        WHERE CAST(load_date AS DATE) < (CURRENT_DATE - INTERVAL 7 DAY)
     """)
             print("Cleaned up raw_target_api: deleted rows older than 7 days.")
         except Exception as e:

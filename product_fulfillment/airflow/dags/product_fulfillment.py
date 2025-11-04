@@ -19,7 +19,7 @@ def target_api_to_motherduck():
     def trigger_api_function():
         url = "https://us-central1-ba882-team4.cloudfunctions.net/load_api_to_motherduck"
         headers = {"Content-Type": "application/json"}
-        resp = requests.get(url, headers=headers, timeout=300)
+        resp = requests.get(url, headers=headers, timeout=2700)
         print(resp.status_code, resp.text)
         resp.raise_for_status()
         return resp.status_code
