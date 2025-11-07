@@ -41,9 +41,9 @@ def load_api_to_motherduck(request):
 
     with duckdb.connect(f"md:?motherduck_token={md_token}") as conn:
         conn.sql("CREATE DATABASE IF NOT EXISTS project_882")
-        conn.sql("CREATE SCHEMA IF NOT EXISTS project_882.main")
-        # conn.sql("USE project_882.main")
-        conn.sql("SET schema 'project_882.main'")
+        conn.sql("USE project_882")  # ✅ switch database
+        conn.sql("CREATE SCHEMA IF NOT EXISTS main")
+        conn.sql("SET schema 'main'") 
 
         # -----------------------------------------------------------------
         # Fetch valid (store_id, product_id) pairs from product_search
@@ -173,32 +173,71 @@ def load_api_to_motherduck(request):
             df.columns = [c.lower().replace(".", "_") for c in df.columns]
 
         # ==============================================================
-        # 🚀 Load into MotherDuck
+        # 🚀 Load into MotherDuck (fully qualified table path)
         # ==============================================================
+
         conn.register("df_view", df)
 
+        DB = "project_882"
+        SCHEMA = "main"
+        TABLE = "target_products_fulfillment"
+        FULL_TABLE = f"{DB}.{SCHEMA}.{TABLE}"
+
+        # Check if table exists
         table_exists = (
-            conn.execute("""
-                SELECT COUNT(*) FROM information_schema.tables
-                WHERE table_name = 'target_products_fulfillment'
+            conn.execute(f"""
+                SELECT COUNT(*)
+                FROM information_schema.tables
+                WHERE table_schema = '{SCHEMA}' AND table_name = '{TABLE}'
             """).fetchone()[0]
             > 0
         )
 
         if not table_exists:
-            conn.execute("CREATE TABLE target_products_fulfillment AS SELECT * FROM df_view")
-            print("🆕 Created target_products_fulfillment.")
+            conn.execute(f"CREATE TABLE {FULL_TABLE} AS SELECT * FROM df_view")
+            print(f"🆕 Created {FULL_TABLE}.")
         else:
-            existing_cols = [r[1] for r in conn.execute("PRAGMA table_info('target_products_fulfillment')").fetchall()]
+            existing_cols = [r[1] for r in conn.execute(f"PRAGMA table_info('{FULL_TABLE}')").fetchall()]
             for col in existing_cols:
                 if col not in df.columns:
                     df[col] = None
             df = df[existing_cols]
             conn.register("df_view", df)
             col_str = ", ".join(existing_cols)
-            conn.execute(f"INSERT INTO target_products_fulfillment ({col_str}) SELECT {col_str} FROM df_view")
-            print(f"Appended {len(df)} rows to target_products_fulfillment.")
+            conn.execute(f"INSERT INTO {FULL_TABLE} ({col_str}) SELECT {col_str} FROM df_view")
+            print(f"Appended {len(df)} rows to {FULL_TABLE}.")
 
         msg = f"Loaded {len(df)} {'synthetic' if use_synthetic else 'real'} rows for 7-day window."
         print(msg)
         return (msg, 200)
+
+# # ==============================================================
+        # # 🚀 Load into MotherDuck
+        # # ==============================================================
+        # conn.register("df_view", df)
+
+        # table_exists = (
+        #     conn.execute("""
+        #         SELECT COUNT(*) FROM information_schema.tables
+        #         WHERE table_name = 'target_products_fulfillment'
+        #     """).fetchone()[0]
+        #     > 0
+        # )
+
+        # if not table_exists:
+        #     conn.execute("CREATE TABLE target_products_fulfillment AS SELECT * FROM df_view")
+        #     print("🆕 Created target_products_fulfillment.")
+        # else:
+        #     existing_cols = [r[1] for r in conn.execute("PRAGMA table_info('project_882.main.target_products_fulfillment')").fetchall()]
+        #     for col in existing_cols:
+        #         if col not in df.columns:
+        #             df[col] = None
+        #     df = df[existing_cols]
+        #     conn.register("df_view", df)
+        #     col_str = ", ".join(existing_cols)
+        #     conn.execute(f"INSERT INTO target_products_fulfillment ({col_str}) SELECT {col_str} FROM df_view")
+        #     print(f"Appended {len(df)} rows to target_products_fulfillment.")
+
+        # msg = f"Loaded {len(df)} {'synthetic' if use_synthetic else 'real'} rows for 7-day window."
+        # print(msg)
+        # return (msg, 200)
