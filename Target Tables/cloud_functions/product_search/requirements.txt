@@ -1,0 +1,4 @@
+duckdb
+google-cloud-secret-manager
+pandas
+sdv

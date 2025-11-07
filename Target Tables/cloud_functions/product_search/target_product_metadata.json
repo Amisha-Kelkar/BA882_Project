@@ -1,0 +1,54 @@
+{
+    "METADATA_SPEC_VERSION": "SINGLE_TABLE_V1",
+    "primary_key": "Unnamed: 0",
+    "columns": {
+        "Unnamed: 0": {
+            "sdtype": "id"
+        },
+        "store_id": {
+            "sdtype": "id"
+        },
+        "product_id": {
+            "sdtype": "id"
+        },
+        "title": {
+            "sdtype": "categorical"
+        },
+        "brand": {
+            "sdtype": "numerical"
+        },
+        "price": {
+            "sdtype": "categorical"
+        },
+        "availability": {
+            "sdtype": "numerical"
+        },
+        "rating": {
+            "sdtype": "numerical"
+        },
+        "reviews": {
+            "sdtype": "numerical"
+        },
+        "url": {
+            "sdtype": "categorical"
+        },
+        "category": {
+            "sdtype": "numerical"
+        },
+        "keyword": {
+            "sdtype": "categorical"
+        },
+        "load_date": {
+            "datetime_format": "%Y-%m-%d",
+            "sdtype": "datetime"
+        },
+        "load_timestamp": {
+            "datetime_format": "%Y-%m-%dT%H:%M:%S.%f",
+            "sdtype": "datetime"
+        },
+        "record_date": {
+            "datetime_format": "%Y-%m-%dT%H:%M:%S.%f",
+            "sdtype": "datetime"
+        }
+    }
+}
