@@ -39,7 +39,7 @@ with DAG(
     default_args=default_args,
     description="Fetch 12-month Google Trends data daily and load to MotherDuck",
     start_date=datetime(2025, 11, 3),
-    schedule_interval="@daily",  
+    schedule="@daily",  
     catchup=False,
     tags=["google_trends", "motherduck", "gcf"],
 ) as dag:

@@ -41,7 +41,9 @@ def load_api_to_motherduck(request):
 
     with duckdb.connect(f"md:?motherduck_token={md_token}") as conn:
         conn.sql("CREATE DATABASE IF NOT EXISTS project_882")
-        conn.sql("USE project_882")
+        conn.sql("CREATE SCHEMA IF NOT EXISTS project_882.main")
+        # conn.sql("USE project_882.main")
+        conn.sql("SET schema 'project_882.main'")
 
         # -----------------------------------------------------------------
         # Fetch valid (store_id, product_id) pairs from product_search
@@ -50,10 +52,10 @@ def load_api_to_motherduck(request):
             SELECT DISTINCT
                 CAST(store_id AS INTEGER) AS store_id,
                 CAST(product_id AS STRING) AS tcin
-            FROM project_882.main.target_products_search
+            FROM target_products_search
             WHERE store_id IS NOT NULL
               AND product_id IS NOT NULL
-              AND load_date=(SELECT MAX(load_date) FROM project_882.main.target_products_search)
+              AND load_date=(SELECT MAX(load_date) FROM target_products_search)
         """).fetchdf()
         pairs = pairs_df.to_dict("records")
         print(f"Fetched {len(pairs)} unique store/product_id pairs from product_search.")
