@@ -40,7 +40,14 @@ def target_product_search_to_motherduck():
         wait_for_completion=False,
     )
 
-    trigger_product_search() >> trigger_next
+    trigger_price_details = TriggerDagRunOperator(
+        task_id="trigger_target_price_details_dag",
+        trigger_dag_id="target_price_details_to_motherduck",  # next DAG in your pipeline
+        reset_dag_run=True,
+        wait_for_completion=False,
+    )
+
+    trigger_product_search() >> trigger_next >> trigger_price_details
 
 
 target_product_search_to_motherduck()

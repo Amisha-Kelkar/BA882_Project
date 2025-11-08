@@ -24,5 +24,12 @@ gcloud functions deploy load_api_to_motherduck   \
         --gen2   --runtime=python311   \
         --region=us-central1   --source=.  \
         --entry-point=load_api_to_motherduck   --trigger-http   \
-        --allow-unauthenticated   --set-env-vars=GOOGLE_CLOUD_PROJECT=ba882-team4   \
-        --timeout=240s --memory=512MB
+        --allow-unauthenticated   --set-env-vars=GOOGLE_CLOUD_PROJECT=ba882-team4  --set-env-vars USE_SYNTHETIC_DATA=True \
+        --timeout=2700s --memory=2GB
+
+gcloud functions deploy target_product_price_details_to_motherduck   \
+        --gen2   --runtime=python311   \
+        --region=us-central1   --source=.  \
+        --entry-point=target_product_price_details_to_motherduck   --trigger-http   \
+        --allow-unauthenticated   --set-env-vars=GOOGLE_CLOUD_PROJECT=ba882-team4  \
+        --timeout=540s --memory=512MB
