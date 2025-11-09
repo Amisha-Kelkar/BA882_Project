@@ -1,10 +1,9 @@
 import os
-import time
 import duckdb
 from google.cloud import secretmanager
 
+
 def get_secret(secret_id: str) -> str:
-    """Fetch MotherDuck token securely from Secret Manager"""
     project_id = os.environ.get("GOOGLE_CLOUD_PROJECT")
     client = secretmanager.SecretManagerServiceClient()
     name = f"projects/{project_id}/secrets/{secret_id}/versions/latest"
@@ -15,22 +14,30 @@ def get_secret(secret_id: str) -> str:
 def load_gold_layer(request):
     """
     Triggered via HTTP.
-    Runs the GOLD LAYER SQL to create/refresh stockout_daily table in MotherDuck.
+    Executes gold layer SQL to update project_882.gold.stockout_daily.
     """
     md_token = get_secret("project_motherduck_token")
+
+    # Connect directly to your MotherDuck workspace
     conn = duckdb.connect(f"md:?motherduck_token={md_token}")
     print("✅ Connected to MotherDuck")
 
-    # Run schema setup (idempotent)
+    # Step 1: Ensure schema/table setup
     with open("target-gold-schema-setup.sql", "r") as f:
-        schema_sql = f.read()
-    conn.execute(schema_sql)
-    print("✅ Gold schema verified/created")
+        conn.execute(f.read())
+    print("✅ Gold schema verified or created.")
 
-    # Run incremental gold layer logic
+    # Step 2: Run gold incremental script
     with open("target-gold-incremental.sql", "r") as f:
-        gold_sql = f.read()
-    conn.execute(gold_sql)
-    print("✅ Gold layer incremental load completed")
+        conn.execute(f.read())
+    print("✅ Gold layer incremental load completed.")
 
-    return ("Gold layer updated successfully!", 200)
+    # Step 3: Verify results
+    count = conn.execute("""
+        SELECT COUNT(*) 
+        FROM project_882.gold.stockout_daily
+    """).fetchone()[0]
+
+    print(f"✅ Rows now in gold.stockout_daily: {count}")
+
+    return ("Gold layer updated successfully in project_882.gold!", 200)
