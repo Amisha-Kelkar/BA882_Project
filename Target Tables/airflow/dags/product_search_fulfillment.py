@@ -49,12 +49,20 @@ def target_product_search_to_motherduck():
 
     trigger_silver_layer = TriggerDagRunOperator(
         task_id="trigger_silver_layer_dag",
-        trigger_dag_id="silver_table_join",  # next DAG in your pipeline
+        trigger_dag_id="silver_layer_to_motherduck",  # next DAG in your pipeline
         reset_dag_run=True,
         wait_for_completion=False,
     )
 
-    trigger_product_search() >> trigger_next >> trigger_price_details >> trigger_silver_layer
+        
+    trigger_gold = TriggerDagRunOperator(
+        task_id="trigger_gold_layer_dag",
+        trigger_dag_id="gold_layer_to_motherduck",
+        reset_dag_run=True,
+        wait_for_completion=False,
+    )
+    
+    trigger_product_search() >> trigger_next >> trigger_price_details >> trigger_silver_layer >> trigger_gold
 
 
 target_product_search_to_motherduck()
