@@ -33,3 +33,10 @@ gcloud functions deploy target_product_price_details_to_motherduck   \
         --entry-point=target_product_price_details_to_motherduck   --trigger-http   \
         --allow-unauthenticated   --set-env-vars=GOOGLE_CLOUD_PROJECT=ba882-team4  \
         --timeout=540s --memory=512MB
+
+gcloud functions deploy silver_table_join   \
+        --gen2   --runtime=python311   \
+        --region=us-central1   --source=.  \
+        --entry-point=silver_table_join   --trigger-http   \
+        --allow-unauthenticated   --set-env-vars=GOOGLE_CLOUD_PROJECT=ba882-team4  \
+        --timeout=2700s --memory=512MB

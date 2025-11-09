@@ -47,7 +47,14 @@ def target_product_search_to_motherduck():
         wait_for_completion=False,
     )
 
-    trigger_product_search() >> trigger_next >> trigger_price_details
+    trigger_silver_layer = TriggerDagRunOperator(
+        task_id="trigger_silver_layer_dag",
+        trigger_dag_id="silver_table_join",  # next DAG in your pipeline
+        reset_dag_run=True,
+        wait_for_completion=False,
+    )
+
+    trigger_product_search() >> trigger_next >> trigger_price_details >> trigger_silver_layer
 
 
 target_product_search_to_motherduck()
