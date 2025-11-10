@@ -1,6 +1,0 @@
-duckdb==1.4.1
-pandas
-scikit-learn
-# 如果 main.py 里还有别的依赖，就加在这里，比如：
-# pyarrow
-# numpy
