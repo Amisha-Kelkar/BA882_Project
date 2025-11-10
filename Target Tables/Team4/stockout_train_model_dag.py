@@ -18,9 +18,9 @@ with DAG(
     dag_id="stockout_train_model",
     description="Train the stockout model using the local ml-train-model script",
     default_args=default_args,
-    schedule_interval="@daily",       # ✅ Runs automatically once per day (00:00 UTC)
+    schedule_interval="@weekly",
     start_date=datetime(2025, 11, 1),
-    catchup=False,                    # Skip historical runs
+    catchup=False,                    
     tags=["ba882", "mlops", "train"],
 ) as dag:
 
@@ -39,3 +39,4 @@ with DAG(
         python /home/airflow/gcs/dags/lib/ml-train-model/main.py
         """,
     )
+
