@@ -5,3 +5,10 @@ venv/
 # Python cache
 __pycache__/
 *.pyc
+# Python virtual env
+.venv/
+venv/
+
+# Python cache
+__pycache__/
+*.pyc
