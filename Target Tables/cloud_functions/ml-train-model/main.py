@@ -58,7 +58,7 @@ def prepare_features(df: pd.DataFrame):
 
 
 
-def main():
+def main(request):
     conn = get_md_connection()
 
     # 1) Load train and validation data
