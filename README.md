@@ -8,7 +8,7 @@ The platform’s foundation was established through a fully automated ingestion 
 
 The unified dataset powers machine learning models that predict potential stockouts by analyzing historical pricing, fulfillment, and demand relationships. The final stage extends this predictive capability through LLMOps integration, enabling natural-language alerts that communicate upcoming stock risks and insights directly to decision-makers. Together, these components form a scalable, intelligent platform capable of transforming raw retail data into actionable, interpretable predictions.
 
-### ER Diagram 
+### Data Tables
 The data that is used in the project comes from the following tables- <br>
 ● **STORE_DATA** - Defines store identifiers and attributes. <br>
 ● **TARGET_PRODUCTS_SEARCH** - Captures product metadata and availability from Target’s API. <br>
