@@ -60,6 +60,17 @@ def run_sql_file(conn, path, label):
         print(f"[WARN] Missing SQL file: {path}")
 
 
+def build_stockout_features(conn):
+    """
+    Phase 0: Rebuild feature dataset in MotherDuck.
+
+    This executes build_stockout_features.sql to create/refresh
+    project_882.ai_datasets.stockout_features from the latest gold.stockout_daily.
+    """
+    sql_path = SQL_DIR / "build_stockout_features.sql"
+    run_sql_file(conn, sql_path, "build stockout_features dataset")
+
+
 def prepare_features(df):
     """Prepare features and labels for model training."""
     id_cols = ["store_id", "product_id", "event_date"]
@@ -74,14 +85,33 @@ def prepare_features(df):
 
 
 def main():
-    """End-to-end training pipeline: register, train, evaluate, and log metadata."""
+    """
+    End-to-end training pipeline:
+
+    Phase 0: Rebuild feature dataset (ai_datasets.stockout_features)
+    Phase 1: Register model & dataset metadata
+    Phase 2: Train & evaluate logistic regression model
+    Phase 3: Generate predictions and write to MotherDuck
+    Phase 4: Log MLOps metadata (training_run & model_version)
+    """
     conn = get_md_connection()
 
-    # 1. Register model and dataset
+    # ==============================
+    # Phase 0: Rebuild feature dataset
+    # ==============================
+    print("Phase 0: Rebuilding ai_datasets.stockout_features ...")
+    build_stockout_features(conn)
+    print("Finished rebuilding ai_datasets.stockout_features.\n")
+
+    # ==============================
+    # Phase 1: Register model & dataset
+    # ==============================
     run_sql_file(conn, SQL_DIR / "register_model.sql", "model registration")
     run_sql_file(conn, SQL_DIR / "register_dataset.sql", "dataset registration")
 
-    # 2. Load dataset
+    # ==============================
+    # Phase 2: Load dataset & train model
+    # ==============================
     print("Loading dataset from project_882.ai_datasets.stockout_features ...")
     df = conn.execute(
         """
@@ -99,18 +129,18 @@ def main():
     X_train, y_train, feature_cols = prepare_features(train_df)
     X_valid, y_valid, _ = prepare_features(valid_df)
 
-    # 3. Feature standardization
+    # Feature standardization
     scaler = StandardScaler()
     X_train_scaled = scaler.fit_transform(X_train)
     X_valid_scaled = scaler.transform(X_valid)
 
-    # 4. Logistic Regression (without class_weight)
+    # Train Logistic Regression
     print("Scaling features and training LogisticRegression model...")
     model = LogisticRegression(max_iter=5000, n_jobs=-1)
     model.fit(X_train_scaled, y_train)
     print("Model training finished.")
 
-    # 5. Training metrics
+    # Training metrics
     train_pred = model.predict(X_train_scaled)
     train_acc = accuracy_score(y_train, train_pred)
     train_f1 = f1_score(y_train, train_pred)
@@ -120,7 +150,7 @@ def main():
         f"  F1 score : {train_f1:.4f}"
     )
 
-    # 6. Validation metrics
+    # Validation metrics
     valid_proba = model.predict_proba(X_valid_scaled)[:, 1]
     valid_pred = (valid_proba >= 0.5).astype(int)
     valid_acc = accuracy_score(y_valid, valid_pred)
@@ -133,7 +163,9 @@ def main():
         f"  ROC AUC  : {valid_roc:.4f}"
     )
 
-    # 7. Generate predictions and write results to MotherDuck
+    # ==============================
+    # Phase 3: Generate predictions & write to MotherDuck
+    # ==============================
     X_all, y_all, _ = prepare_features(df)
     X_all_scaled = scaler.transform(X_all)
     proba_all = model.predict_proba(X_all_scaled)[:, 1]
@@ -154,7 +186,9 @@ def main():
     )
     print("Done. Table: project_882.model_outputs.stockout_predictions_v1")
 
-    # 8. Log MLOps metadata
+    # ==============================
+    # Phase 4: Log MLOps metadata
+    # ==============================
     model_id = "stockout_v1"
 
     # Get latest dataset_id for this model
