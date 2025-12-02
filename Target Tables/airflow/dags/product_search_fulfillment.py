@@ -53,7 +53,6 @@ def target_product_search_to_motherduck():
         reset_dag_run=True,
         wait_for_completion=False,
     )
-
         
     trigger_gold = TriggerDagRunOperator(
         task_id="trigger_gold_layer_dag",
@@ -61,8 +60,22 @@ def target_product_search_to_motherduck():
         reset_dag_run=True,
         wait_for_completion=False,
     )
-    
-    trigger_product_search() >> trigger_next >> trigger_price_details >> trigger_silver_layer >> trigger_gold
+
+    trigger_train_model = TriggerDagRunOperator(
+        task_id="trigger_model_training_dag",
+        trigger_dag_id="stockout_train_model",
+        reset_dag_run=True,
+        wait_for_completion=False,
+    )
+
+    trigger_slack = TriggerDagRunOperator(
+        task_id="trigger_slack_notification_dag",
+        trigger_dag_id="slack_alert",
+        reset_dag_run=True,
+        wait_for_completion=False,
+    )
+
+    trigger_product_search() >> trigger_next >> trigger_price_details >> trigger_silver_layer >> trigger_gold >> trigger_train_model >> trigger_slack
 
 
 target_product_search_to_motherduck()
