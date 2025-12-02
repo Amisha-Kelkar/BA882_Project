@@ -1,0 +1,8 @@
+numpy==1.26.4
+duckdb==1.4.2
+requests>=2.31.0
+functions-framework==3.*
+google-cloud-secret-manager
+google-genai>=1.0.0
+google-cloud-aiplatform==1.38.1
+gunicorn

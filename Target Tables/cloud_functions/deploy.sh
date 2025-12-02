@@ -40,3 +40,21 @@ gcloud functions deploy silver_table_join   \
         --entry-point=silver_table_join   --trigger-http   \
         --allow-unauthenticated   --set-env-vars=GOOGLE_CLOUD_PROJECT=ba882-team4  \
         --timeout=2700s --memory=512MB
+
+
+
+gcloud functions deploy slack-bot \
+  --gen2 \
+  --runtime=python311 \
+  --region=us-central1 \
+  --entry-point=slack_bot \
+  --trigger-http \
+  --allow-unauthenticated \
+  --set-env-vars=SLACK_CHANNEL=\#ba882-stockout_alert,\
+MOTHERDUCK_DB=project_882,\
+GOOGLE_CLOUD_PROJECT=ba882-team4,\
+GOOGLE_CLOUD_LOCATION=us-central1,\
+SLACK_BOT_USER_ID=A0A1A45JFEU \
+  --timeout=540s \
+  --memory=1Gi
+
