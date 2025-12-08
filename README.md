@@ -15,12 +15,12 @@ Together, these layers form a comprehensive inventory intelligence platform capa
 ### Data Tables
 The project uses the following core tables within MotherDuck:
 
-● **STORE_DATA** - Defines store identifiers and attributes. <br>
-● **TARGET_PRODUCTS_SEARCH** - Captures product metadata and availability from Target’s API. <br>
-● **TARGET_PRODUCTS_FULFILLMENT** - Tracks delivery status and inventory availability.<br>
-● **TARGET_PRODUCT_PRICE_DETAILS** - Stores synthetic store-level pricing and promotions. <br>
-● **TARGET_PRODUCTS_SEARCH** - Captures product metadata and availability from Target’s API. <br>
-● **GOOGLE_TRENDS_DATA** – Search interest values for demand-related seasonal or category terms.  
+-  **STORE_DATA** - Defines store identifiers and attributes. <br>
+-  **TARGET_PRODUCTS_SEARCH** - Captures product metadata and availability from Target’s API. <br>
+-  **TARGET_PRODUCTS_FULFILLMENT** - Tracks delivery status and inventory availability.<br>
+-  **TARGET_PRODUCT_PRICE_DETAILS** - Stores synthetic store-level pricing and promotions. <br>
+-  **TARGET_PRODUCTS_SEARCH** - Captures product metadata and availability from Target’s API. <br>
+-  **GOOGLE_TRENDS_DATA** – Search interest values for demand-related seasonal or category terms.  
 
 
 ### Pipeline Architecture
