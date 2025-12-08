@@ -1,6 +1,6 @@
-# BA882_Project <br>
-## Predictive Inventory Intelligence Platform<br>
--Aaryan Bammi, Achinthya Sreedhar, Amisha Kelkar, Chenhui Shen, Yucheng He<br>
+# BA882_Project
+## Predictive Inventory Intelligence Platform
+**-Aaryan Bammi, Achinthya Sreedhar, Amisha Kelkar, Chenhui Shen, Yucheng He**<br>
 
 ### Introduction
 The Predictive Inventory Intelligence Platform automates the ingestion, transformation, and analysis of Target retail data to enable proactive, data-driven stock management. Built for Target’s retail ecosystem, the platform identifies potential stockout risks and converts raw data into actionable analytical insights. It leverages a modern, scalable stack including MotherDuck, Google Cloud Functions, and Astronomer (Airflow) to coordinate ingestion pipelines, transformation workflows, machine-learning tasks, and LLM-based alerting.
